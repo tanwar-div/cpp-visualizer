@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>C++ Data Flow Visualizer</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="topbar">
+        <div>
+          <h1>C++ Data Flow Visualizer</h1>
+          <p>Step through <code>new.cpp</code> and watch recursive calls, memo table writes, and variable changes.</p>
+        </div>
+        <div class="controls" aria-label="Trace controls">
+          <input id="stdinInput" type="text" placeholder="stdin input, optional" />
+          <select id="stepMode" aria-label="Step mode">
+            <option value="step">Step into calls</option>
+            <option value="next">Step over calls</option>
+          </select>
+          <button id="traceBtn" type="button">Build Trace</button>
+          <button id="prevBtn" type="button">Previous Step</button>
+          <button id="nextBtn" type="button">Next Step</button>
+          <button id="playBtn" type="button">Play</button>
+          <button id="resetBtn" type="button">Reset</button>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <aside class="sourcePane">
+          <div class="paneHeader">
+            <h2>Source</h2>
+            <label class="fileButton">
+              Load .cpp
+              <input id="fileInput" type="file" accept=".cpp,.cc,.cxx,.txt" />
+            </label>
+          </div>
+          <textarea id="sourceEditor" class="sourceEditor" spellcheck="false" aria-label="Editable C++ source"></textarea>
+          <pre id="sourceView" class="sourceView" aria-label="C++ source"></pre>
+        </aside>
+
+        <section class="visualPane">
+          <div class="stepHeader">
+            <div>
+              <span id="stepCount" class="stepCount">Step 1 / 1</span>
+              <h2 id="stepTitle">Ready</h2>
+            </div>
+            <p id="stepDetail"></p>
+          </div>
+
+          <div class="flowCanvasWrap">
+            <svg id="flowSvg" class="flowSvg" role="img" aria-label="Call and data flow graph"></svg>
+          </div>
+
+          <section class="stateGrid">
+            <div class="panel">
+              <h3>Current Variables</h3>
+              <div id="varList" class="varList"></div>
+            </div>
+            <div class="panel">
+              <h3>Call Stack</h3>
+              <div id="stackList" class="stackList"></div>
+            </div>
+            <div class="panel wide">
+              <h3>Watched Data</h3>
+              <div id="dpTable" class="dpTable"></div>
+            </div>
+            <div class="panel wide">
+              <h3>Program Output</h3>
+              <pre id="programOutput" class="programOutput"></pre>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

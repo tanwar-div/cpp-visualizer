@@ -1,0 +1,455 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7fb;
+  --ink: #172033;
+  --muted: #5e6a7d;
+  --line: #d9dfeb;
+  --panel: #ffffff;
+  --accent: #2563eb;
+  --accent-strong: #1749b4;
+  --accent-soft: #dbeafe;
+  --green: #12805c;
+  --green-soft: #dff7ee;
+  --orange: #b45309;
+  --orange-soft: #ffedd5;
+  --red: #b42318;
+  --red-soft: #fee4e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+button {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 9px 13px;
+}
+
+input,
+select,
+textarea {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  font: inherit;
+}
+
+input,
+select {
+  background: var(--panel);
+  padding: 9px 10px;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.topbar {
+  align-items: center;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.topbar p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+#stdinInput {
+  min-width: 220px;
+}
+
+#nextBtn,
+#playBtn,
+#traceBtn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+#nextBtn:hover,
+#playBtn:hover,
+#traceBtn:hover {
+  background: var(--accent-strong);
+}
+
+.workspace {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(360px, 0.8fr) minmax(520px, 1.2fr);
+  padding: 16px;
+}
+
+.sourcePane,
+.visualPane,
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sourcePane {
+  min-height: calc(100vh - 104px);
+  overflow: hidden;
+}
+
+.paneHeader {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+}
+
+.paneHeader h2,
+.stepHeader h2 {
+  font-size: 18px;
+}
+
+.fileButton {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 10px;
+}
+
+.fileButton input {
+  display: none;
+}
+
+.sourceEditor {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  display: block;
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  min-height: 210px;
+  outline: none;
+  padding: 12px;
+  resize: vertical;
+  width: 100%;
+}
+
+.sourceView {
+  counter-reset: line;
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+  max-height: calc(100vh - 384px);
+  overflow: auto;
+  padding: 10px 0;
+}
+
+.codeLine {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 42px 1fr;
+  min-width: max-content;
+  padding: 0 12px;
+}
+
+.codeLine::before {
+  color: #94a3b8;
+  content: attr(data-line);
+  text-align: right;
+}
+
+.codeLine.active {
+  background: #fff7cc;
+  outline: 1px solid #f3d14b;
+}
+
+.visualPane {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 104px);
+  overflow: hidden;
+}
+
+.stepHeader {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  min-height: 92px;
+  padding: 14px;
+}
+
+.stepCount {
+  color: var(--muted);
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+#stepDetail {
+  color: var(--muted);
+  line-height: 1.45;
+  max-width: 460px;
+}
+
+.flowCanvasWrap {
+  border-bottom: 1px solid var(--line);
+  height: 360px;
+  overflow: auto;
+}
+
+.flowSvg {
+  display: block;
+  min-height: 360px;
+  min-width: 820px;
+  width: 100%;
+}
+
+.node rect {
+  fill: white;
+  stroke: #aab5c8;
+  stroke-width: 1.4;
+}
+
+.node.active rect {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 2.2;
+}
+
+.node.returned rect {
+  fill: var(--green-soft);
+  stroke: var(--green);
+}
+
+.node text {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.edge {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-width: 1.6;
+}
+
+.edge.active {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.edgeLabel {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.stateGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  padding: 12px;
+}
+
+.panel {
+  min-height: 148px;
+  padding: 12px;
+}
+
+.panel h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.panel.wide {
+  grid-column: 1 / -1;
+}
+
+.varList,
+.stackList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.kv,
+.frame {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.kv.changed {
+  background: var(--orange-soft);
+  border-color: #fdba74;
+}
+
+.key {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.value {
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.frame {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.frame.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.frame small {
+  color: var(--muted);
+}
+
+.dpTable {
+  overflow: auto;
+}
+
+.programOutput {
+  background: #0f172a;
+  border-radius: 7px;
+  color: #e2e8f0;
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  margin: 0;
+  max-height: 150px;
+  min-height: 52px;
+  overflow: auto;
+  padding: 10px;
+  white-space: pre-wrap;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th,
+td {
+  border: 1px solid var(--line);
+  font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  padding: 8px;
+  text-align: center;
+}
+
+th {
+  background: #f8fafc;
+}
+
+td.changed {
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 900;
+}
+
+td.empty {
+  color: #94a3b8;
+}
+
+@media (max-width: 980px) {
+  .topbar,
+  .stepHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .controls {
+    justify-content: flex-start;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sourcePane,
+  .visualPane {
+    min-height: auto;
+  }
+
+  .sourceView {
+    max-height: 420px;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace {
+    padding: 10px;
+  }
+
+  .stateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel.wide {
+    grid-column: auto;
+  }
+}
