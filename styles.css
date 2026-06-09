@@ -76,6 +76,9 @@ button:disabled {
   gap: 20px;
   justify-content: space-between;
   padding: 16px 20px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 h1,

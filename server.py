@@ -149,6 +149,35 @@ def locals_for(frame, current_line):
     return values
 
 
+def arguments_for(frame):
+    values = {{}}
+    block = None
+    try:
+        block = frame.block()
+    except Exception:
+        return values
+    seen = set()
+    while block:
+        for symbol in block:
+            name = getattr(symbol, "name", None)
+            if not name or name in seen:
+                continue
+            try:
+                is_argument = bool(symbol.is_argument)
+            except Exception:
+                is_argument = False
+            if is_argument:
+                value = value_to_string(frame, symbol, block)
+                if value != "<not available yet>":
+                    values[name] = value
+                seen.add(name)
+        try:
+            block = block.superblock
+        except Exception:
+            break
+    return values
+
+
 def stack_for():
     frames = []
     frame = gdb.newest_frame()
@@ -166,6 +195,7 @@ def stack_for():
                 "function": function_name,
                 "file": os.path.basename(filename) if filename else "?",
                 "line": sal.line if sal else None,
+                "args": arguments_for(frame),
             }})
         frame = frame.older()
         level += 1

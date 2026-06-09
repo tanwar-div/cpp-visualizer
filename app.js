@@ -100,28 +100,127 @@ function frameKey(frame) {
   return `${frame.level}:${frame.function}:${frame.line}`;
 }
 
+function compactValue(value) {
+  return String(value ?? "")
+    .replace(/^std::vector of length \d+, capacity \d+ = /, "")
+    .replace(/^"([\s\S]{0,42})[\s\S]*"$/, '"$1"')
+    .replace(/\s+/g, " ");
+}
+
+function formatValueParts(values, limit = 3) {
+  const entries = Object.entries(values || {}).filter(([key]) => key !== "this");
+  const visible = entries
+    .slice(0, limit)
+    .map(([key, value]) => `${key}=${compactValue(value)}`);
+  if (entries.length > limit) visible.push("...");
+  return visible;
+}
+
+function wrapText(text, maxChars = 30, maxLines = 2) {
+  const words = String(text || "").split(/(\s+|,\s*)/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  words.forEach((word) => {
+    const next = line + word;
+    if (next.length > maxChars && line) {
+      lines.push(line.trim().replace(/,$/, ""));
+      line = word.trimStart();
+    } else {
+      line = next;
+    }
+  });
+  if (line.trim()) lines.push(line.trim().replace(/,$/, ""));
+  if (!lines.length) return [];
+  if (lines.length > maxLines) {
+    const clipped = lines.slice(0, maxLines);
+    clipped[maxLines - 1] = `${clipped[maxLines - 1].replace(/\s*\.\.\.$/, "")} ...`;
+    return clipped;
+  }
+  return lines;
+}
+
+function formatValues(values, limit = 3, maxChars = 30, maxLines = 2) {
+  return wrapText(formatValueParts(values, limit).join(", "), maxChars, maxLines);
+}
+
+function estimateBoxSize(title, valueLines) {
+  const longest = [title, ...valueLines].reduce((max, line) => Math.max(max, line.length), 0);
+  return {
+    width: Math.min(320, Math.max(142, longest * 7.2 + 24)),
+    height: Math.max(58, 34 + valueLines.length * 17),
+  };
+}
+
 function graphFromStack(step) {
   const stack = [...step.stack].reverse();
-  const nodes = stack.map((frame, index) => ({
-    id: frameKey(frame),
-    function: frame.function,
-    line: frame.line,
-    level: frame.level,
-    active: index === stack.length - 1,
-    x: 80 + index * 150,
-    y: 88,
-  }));
+  const maxRowWidth = 900;
+  const gapX = 64;
+  const gapY = 34;
+  const left = 70;
+  const top = 62;
+  const rows = [[]];
+  const nodes = stack.map((frame, index) => {
+    const values = index === stack.length - 1 ? step.locals || frame.args || {} : frame.args || {};
+    const title = frame.function || "program";
+    const valueLines = formatValues(values, 3, 34, 3);
+    const size = estimateBoxSize(title, valueLines.length ? valueLines : ["no values"]);
+    return {
+      id: frameKey(frame),
+      function: title,
+      line: frame.line,
+      args: frame.args || {},
+      values,
+      valueLines: valueLines.length ? valueLines : ["no values"],
+      level: frame.level,
+      active: index === stack.length - 1,
+      width: size.width,
+      height: size.height,
+      x: 0,
+      y: 0,
+    };
+  });
+
+  nodes.forEach((node) => {
+    let row = rows[rows.length - 1];
+    const used = row.reduce((sum, item) => sum + item.width, 0) + Math.max(0, row.length - 1) * gapX;
+    if (row.length && used + gapX + node.width > maxRowWidth) {
+      row = [];
+      rows.push(row);
+    }
+    row.push(node);
+  });
+
+  const rowHeights = rows.map((row) => {
+    const tallest = row.reduce((max, node) => Math.max(max, node.height), 0);
+    return Math.max(72, tallest);
+  });
+
+  rows.forEach((row, rowIndex) => {
+    const rowWidth = row.reduce((sum, node) => sum + node.width, 0) + Math.max(0, row.length - 1) * gapX;
+    const leftToRight = rowIndex % 2 === 0;
+    const rowY = top + rowHeights.slice(0, rowIndex).reduce((sum, height) => sum + height + gapY, 0);
+    let cursor = leftToRight ? left : left + maxRowWidth - rowWidth;
+    const ordered = leftToRight ? row : [...row].reverse();
+    ordered.forEach((node) => {
+      node.x = cursor;
+      node.y = rowY;
+      node.height = rowHeights[rowIndex];
+      cursor += node.width + gapX;
+    });
+  });
+
   const edges = [];
   for (let i = 0; i < nodes.length - 1; i += 1) {
-    edges.push({ from: nodes[i], to: nodes[i + 1] });
+    edges.push({ from: nodes[i], to: nodes[i + 1], labelLines: formatValues(nodes[i + 1].args, 3, 28, 2) });
   }
-  return { nodes, edges };
+  return { nodes, edges, rows, rowHeights };
 }
 
 function renderFlow(step) {
-  const { nodes, edges } = graphFromStack(step);
-  const width = Math.max(820, 180 + nodes.length * 150);
-  els.flowSvg.setAttribute("viewBox", `0 0 ${width} 360`);
+  const { nodes, edges, rowHeights } = graphFromStack(step);
+  const width = Math.max(980, ...nodes.map((node) => node.x + node.width + 70));
+  const height = Math.max(360, ...nodes.map((node) => node.y + node.height + 96));
+  els.flowSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
   const marker = `
     <defs>
       <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -129,25 +228,46 @@ function renderFlow(step) {
       </marker>
     </defs>`;
   const edgeMarkup = edges
-    .map(({ from, to }) => {
-      const x1 = from.x + 118;
-      const y1 = from.y + 25;
-      const x2 = to.x;
-      const y2 = to.y + 25;
-      return `<path class="edge active" d="M ${x1} ${y1} C ${x1 + 35} ${y1}, ${x2 - 35} ${y2}, ${x2} ${y2}" marker-end="url(#arrow)"></path>`;
+    .map(({ from, to, labelLines }) => {
+      const fromCenterX = from.x + from.width / 2;
+      const fromCenterY = from.y + from.height / 2;
+      const toCenterX = to.x + to.width / 2;
+      const toCenterY = to.y + to.height / 2;
+      const sameRow = Math.abs(from.y - to.y) < 4;
+      const fromRight = to.x >= from.x;
+      const x1 = fromRight ? from.x + from.width : from.x;
+      const y1 = fromCenterY;
+      const x2 = fromRight ? to.x : to.x + to.width;
+      const y2 = toCenterY;
+      const labelX = sameRow ? (x1 + x2) / 2 - 48 : toCenterX - 52;
+      const labelY = sameRow ? y1 - 12 : (from.y + from.height + to.y) / 2 - 8;
+      const path = sameRow
+        ? `M ${x1} ${y1} C ${x1 + (fromRight ? 36 : -36)} ${y1}, ${x2 + (fromRight ? -36 : 36)} ${y2}, ${x2} ${y2}`
+        : `M ${fromCenterX} ${from.y + from.height} L ${fromCenterX} ${to.y - 22} L ${toCenterX} ${to.y - 22} L ${toCenterX} ${to.y}`;
+      const labelMarkup = (labelLines || [])
+        .map((line, index) => `<text class="edgeLabel edgeInput" x="${labelX}" y="${labelY + index * 13}">${escapeHtml(line).slice(0, 34)}</text>`)
+        .join("");
+      return `
+        <path class="edge active" d="${path}" marker-end="url(#arrow)"></path>
+        ${labelMarkup}`;
     })
     .join("");
   const nodeMarkup = nodes
-    .map((node) => `
-      <g class="node ${node.active ? "active" : ""}" transform="translate(${node.x}, ${node.y})">
-        <rect width="118" height="52" rx="7"></rect>
-        <text x="10" y="20">${escapeHtml(node.function).slice(0, 15)}</text>
-        <text x="10" y="39">line ${node.line || "?"}</text>
-      </g>`)
+    .map((node) => {
+      const valueMarkup = node.valueLines
+        .map((line, index) => `<text x="10" y="${41 + index * 17}">${escapeHtml(line)}</text>`)
+        .join("");
+      return `
+        <g class="node ${node.active ? "active" : ""}" transform="translate(${node.x}, ${node.y})">
+          <rect width="${node.width}" height="${node.height}" rx="7"></rect>
+          <text x="10" y="20">${escapeHtml(node.function).slice(0, 32)}</text>
+          ${valueMarkup}
+        </g>`;
+    })
     .join("");
   const legend = `
-    <text class="edgeLabel" x="80" y="210">Arrows show caller -> current callee from the debugger call stack.</text>
-    <text class="edgeLabel" x="80" y="232">Use "Step into calls" to see data flow across functions; "Step over" stays in the current function.</text>`;
+    <text class="edgeLabel" x="70" y="${height - 42}">Rows use the tallest box height in that row. Arrows turn down, then across, then back up into the next row.</text>
+    <text class="edgeLabel" x="70" y="${height - 20}">Arrow labels are input parameters; boxes show current frame values.</text>`;
   els.flowSvg.innerHTML = marker + edgeMarkup + nodeMarkup + legend;
 }
 
