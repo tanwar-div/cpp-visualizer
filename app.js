@@ -143,11 +143,24 @@ function formatValues(values, limit = 3, maxChars = 30, maxLines = 2) {
   return wrapText(formatValueParts(values, limit).join(", "), maxChars, maxLines);
 }
 
+function formatValuesForBox(values, limit = 10, maxChars = 34, maxLines = 2) {
+  const parts = formatValueParts(values, limit);
+  const lines = [];
+  parts.forEach((part) => {
+    if (part === "...") {
+      lines.push("...");
+    } else {
+      lines.push(...wrapText(part, maxChars, maxLines));
+    }
+  });
+  return lines;
+}
+
 function estimateBoxSize(title, valueLines) {
   const longest = [title, ...valueLines].reduce((max, line) => Math.max(max, line.length), 0);
   return {
     width: Math.min(320, Math.max(142, longest * 7.2 + 24)),
-    height: Math.max(58, 34 + valueLines.length * 17),
+    height: Math.max(38, 34 + valueLines.length * 17),
   };
 }
 
@@ -162,15 +175,15 @@ function graphFromStack(step) {
   const nodes = stack.map((frame, index) => {
     const values = index === stack.length - 1 ? step.locals || frame.args || {} : frame.args || {};
     const title = frame.function || "program";
-    const valueLines = formatValues(values, 3, 34, 3);
-    const size = estimateBoxSize(title, valueLines.length ? valueLines : ["no values"]);
+    const valueLines = formatValuesForBox(values, 10, 34, 3);
+    const size = estimateBoxSize(title, valueLines);
     return {
       id: frameKey(frame),
       function: title,
       line: frame.line,
       args: frame.args || {},
       values,
-      valueLines: valueLines.length ? valueLines : ["no values"],
+      valueLines,
       level: frame.level,
       active: index === stack.length - 1,
       width: size.width,
@@ -204,7 +217,6 @@ function graphFromStack(step) {
     ordered.forEach((node) => {
       node.x = cursor;
       node.y = rowY;
-      node.height = rowHeights[rowIndex];
       cursor += node.width + gapX;
     });
   });
@@ -266,7 +278,7 @@ function renderFlow(step) {
     })
     .join("");
   const legend = `
-    <text class="edgeLabel" x="70" y="${height - 42}">Rows use the tallest box height in that row. Arrows turn down, then across, then back up into the next row.</text>
+    <text class="edgeLabel" x="70" y="${height - 42}">Row layout spacing is based on the tallest box in each row. Arrows turn down, then across, then back up into the next row.</text>
     <text class="edgeLabel" x="70" y="${height - 20}">Arrow labels are input parameters; boxes show current frame values.</text>`;
   els.flowSvg.innerHTML = marker + edgeMarkup + nodeMarkup + legend;
 }
