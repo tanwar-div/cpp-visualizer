@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -23,7 +24,37 @@ def run_command(args, cwd, timeout):
     )
 
 
-def make_gdb_script(source_path, input_path, output_path, result_path, mode, max_steps):
+def find_function_lines(source):
+    lines = []
+    pending_signature = ""
+    pending_start = None
+    control_words = {"if", "for", "while", "switch", "catch"}
+    for line_number, raw_line in enumerate(source.splitlines(), start=1):
+        line = raw_line.split("//", 1)[0].strip()
+        if not line or line.startswith("#"):
+            continue
+        if pending_signature:
+            pending_signature += " " + line
+        elif "(" in line and ")" in line and not line.endswith(";"):
+            pending_signature = line
+            pending_start = line_number
+        else:
+            continue
+
+        if "{" not in pending_signature:
+            continue
+
+        before_paren = pending_signature.split("(", 1)[0].strip()
+        name = before_paren.split()[-1].split("::")[-1] if before_paren else ""
+        if name and name not in control_words and not name.startswith("operator"):
+            if re.search(r"\b(class|struct|enum|namespace)\b", before_paren) is None:
+                lines.append(pending_start or line_number)
+        pending_signature = ""
+        pending_start = None
+    return sorted(set(lines))
+
+
+def make_gdb_script(source_path, input_path, output_path, result_path, mode, max_steps, function_lines):
     return f"""
 import gdb
 import json
@@ -35,6 +66,7 @@ OUTPUT = {str(output_path)!r}
 RESULT = {str(result_path)!r}
 MODE = {mode!r}
 MAX_STEPS = {int(max_steps)}
+FUNCTION_LINES = {function_lines!r}
 steps = []
 
 gdb.execute("set pagination off", to_string=True)
@@ -209,6 +241,12 @@ def normalize_to_source():
 
 try:
     gdb.execute("break main", to_string=True)
+    if MODE == "step":
+        for line in FUNCTION_LINES:
+            try:
+                gdb.execute("break " + SOURCE + ":" + str(line), to_string=True)
+            except Exception:
+                pass
     gdb.execute("run < " + INPUT + " > " + OUTPUT, to_string=True)
     normalize_to_source()
     capture("start", "Stopped at main.")
@@ -258,11 +296,12 @@ def build_trace(source, stdin_text, mode, max_steps):
         output_path = tmp_path / "stdout.txt"
         result_path = tmp_path / "trace.json"
         script_path = tmp_path / "trace_gdb.py"
+        function_lines = find_function_lines(source)
 
         source_path.write_text(source, encoding="utf-8")
         input_path.write_text(stdin_text or "", encoding="utf-8")
         script_path.write_text(
-            make_gdb_script(source_path, input_path, output_path, result_path, mode, max_steps),
+            make_gdb_script(source_path, input_path, output_path, result_path, mode, max_steps, function_lines),
             encoding="utf-8",
         )
 
