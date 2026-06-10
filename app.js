@@ -51,6 +51,7 @@ const els = {
   playBtn: document.querySelector("#playBtn"),
   resetBtn: document.querySelector("#resetBtn"),
   traceBtn: document.querySelector("#traceBtn"),
+  fullscreenBtn: document.querySelector("#fullscreenBtn"),
   fileInput: document.querySelector("#fileInput"),
   stdinInput: document.querySelector("#stdinInput"),
   stepMode: document.querySelector("#stepMode"),
@@ -418,6 +419,46 @@ els.fileInput.addEventListener("change", async (event) => {
   trace = [];
   stepIndex = 0;
   render();
+});
+
+// Track where the flow canvas lives so we can restore it
+let flowCanvasPlaceholder = null;
+
+function toggleFullscreen() {
+  const canvas = els.flowSvg.closest(".flowCanvasWrap");
+  const isFullscreen = !canvas.classList.contains("is-fullscreen");
+
+  if (isFullscreen) {
+    // Measure topbar before moving anything
+    const topbarHeight = document.querySelector(".topbar").offsetHeight;
+    document.documentElement.style.setProperty("--topbar-height", `${topbarHeight}px`);
+
+    // Drop a placeholder so we know exactly where to put it back
+    flowCanvasPlaceholder = document.createComment("flowCanvasWrap placeholder");
+    canvas.parentNode.insertBefore(flowCanvasPlaceholder, canvas);
+
+    // Move to body so no ancestor can clip or contain it
+    document.body.appendChild(canvas);
+    canvas.classList.add("is-fullscreen");
+    document.body.classList.add("fullscreen-visualizer");
+    els.fullscreenBtn.textContent = "Exit Fullscreen";
+  } else {
+    // Restore to original position
+    canvas.classList.remove("is-fullscreen");
+    document.body.classList.remove("fullscreen-visualizer");
+    flowCanvasPlaceholder.parentNode.insertBefore(canvas, flowCanvasPlaceholder);
+    flowCanvasPlaceholder.remove();
+    flowCanvasPlaceholder = null;
+    els.fullscreenBtn.textContent = "Fullscreen";
+  }
+}
+
+els.fullscreenBtn.addEventListener("click", toggleFullscreen);
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && document.body.classList.contains("fullscreen-visualizer")) {
+    toggleFullscreen();
+  }
 });
 
 els.sourceEditor.value = defaultSource;

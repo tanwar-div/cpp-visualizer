@@ -127,7 +127,7 @@ h1 {
 .workspace {
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(360px, 0.8fr) minmax(520px, 1.2fr);
+  grid-template-columns: minmax(100dvh, 0.8fr) minmax(520px, 1.2fr);
   padding: 16px;
 }
 
@@ -249,8 +249,9 @@ h1 {
 
 .flowCanvasWrap {
   border-bottom: 1px solid var(--line);
-  height: 360px;
+  height: 100dvh;
   overflow: auto;
+  resize: horizontal;
 }
 
 .flowSvg {
@@ -455,4 +456,24 @@ td.empty {
   .panel.wide {
     grid-column: auto;
   }
+}
+
+/* Fullscreen Visualizer Mode */
+body.fullscreen-visualizer {
+  overflow: hidden;
+}
+
+/* The flowCanvasWrap is moved to body in JS, so target it directly */
+.flowCanvasWrap.is-fullscreen {
+  position: fixed;
+  top: var(--topbar-height, 73px);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100vh - var(--topbar-height, 73px)) !important;
+  z-index: 19;
+  background: var(--panel);
+  border: none;
+  border-top: 1px solid var(--line);
+  resize: none !important;
 }
